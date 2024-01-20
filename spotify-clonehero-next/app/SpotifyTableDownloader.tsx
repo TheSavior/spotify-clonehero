@@ -102,11 +102,7 @@ const RENDERED_INSTRUMENTS = [
   'vocals',
 ] as const;
 
-const DEFAULT_SORTING = [
-  {id: 'playCount', desc: true},
-  {id: 'artist', desc: false},
-  {id: 'song', desc: false},
-];
+const DEFAULT_SORTING = [{id: 'playCount', desc: true}];
 
 type AllowedInstrument = (typeof RENDERED_INSTRUMENTS)[number];
 
@@ -471,7 +467,35 @@ export default function SpotifyTableDownloader({
     [tracks, hasPlayCount, downloadState],
   );
 
-  const [sorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
+  const [selectedSorting, setSorting] = useState<SortingState>(DEFAULT_SORTING);
+  const sorting = useMemo(() => {
+    // Apply additional hidden filters if those columns aren't explicitly sorted
+    const resultSorting = [...selectedSorting];
+
+    if (!resultSorting.some(sort => sort.id === 'artist')) {
+      resultSorting.push({id: 'artist', desc: false});
+    }
+
+    if (!resultSorting.some(sort => sort.id === 'song')) {
+      resultSorting.push({id: 'song', desc: false});
+    }
+
+    console.log('sorting', resultSorting);
+
+    return resultSorting;
+  }, [selectedSorting]);
+
+  const getColumnSortDirection = useCallback(
+    (columnId: string): 'asc' | 'desc' | false => {
+      const selected = selectedSorting.find(sort => sort.id == columnId);
+      if (!selected) {
+        return false;
+      }
+
+      return selected.desc ? 'desc' : 'asc';
+    },
+    [selectedSorting],
+  );
 
   const [instrumentFilters, setInstrumentFilters] = useState<
     AllowedInstrument[]
@@ -599,7 +623,8 @@ export default function SpotifyTableDownloader({
                       {{
                         asc: ' 🔼',
                         desc: ' 🔽',
-                      }[header.column.getIsSorted() as string] ?? null}
+                      }[getColumnSortDirection(header.column.id) as string] ??
+                        null}
                     </TableHead>
                   );
                 })}
